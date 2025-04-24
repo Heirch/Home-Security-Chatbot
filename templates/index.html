@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Security Assistant</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        /* Custom styles */
+        #chatbox {
+            max-height: 500px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        .user-message {
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 15px 15px 0 15px;
+            max-width: 70%;
+            margin-left: auto;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+        }
+        .bot-message {
+            background-color: #e5e7eb;
+            color: black;
+            border-radius: 15px 15px 15px 0;
+            max-width: 70%;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+        }
+        /* Scrollbar styling */
+        #chatbox::-webkit-scrollbar {
+            width: 8px;
+        }
+        #chatbox::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 4px;
+        }
+        #chatbox::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        /* Dark Mode Styles */
+        .dark-mode #chatbox {
+            background-color: #2c2c2c;
+        }
+        .dark-mode .user-message {
+            background-color: #2e7d32;
+        }
+        .dark-mode .bot-message {
+            background-color: #424242;
+            color: #ffffff;
+        }
+        .dark-mode body {
+            background-color: #1e1e1e;
+        }
+        .dark-mode #security-status, .dark-mode #email-registration {
+            background-color: #333;
+            color: #ffffff;
+        }
+        .dark-mode #security-status p, .dark-mode #email-registration p {
+            color: #ffffff;
+        }
+        .dark-mode input {
+            background-color: #3c3c3c;
+            color: #ffffff;
+            border-color: #444;
+        }
+        .dark-mode button {
+            background-color: #4CAF50;
+        }
+        .dark-mode button:hover {
+            background-color: #45a049;
+        }
+        .dark-mode .text-gray-500 {
+            color: #a0a0a0;
+        }
+        .dark-mode footer {
+            background-color: #2c2c2c;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white py-4 shadow-md">
+        <div class="container mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-lock mr-2 text-xl"></i>
+                <h1 class="text-2xl font-bold">Home Security Assistant</h1>
+            </div>
+            <button 
+                id="darkModeToggle" 
+                onclick="toggleDarkMode()" 
+                class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
+            >
+                Toggle Dark Mode
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 flex-grow">
+        <!-- Chat Window -->
+        <div id="chatbox" class="bg-white rounded-lg shadow-lg p-4 mb-4">
+            <!-- Messages will be appended here -->
+        </div>
+
+        <!-- Security Status -->
+        <div id="security-status" class="bg-gray-200 rounded-lg p-4 mb-4 hidden">
+            <p class="text-gray-700"><strong>Security Status:</strong> <span id="status-text">Unknown</span></p>
+        </div>
+
+        <!-- Email Registration -->
+        <div id="email-registration" class="bg-gray-200 rounded-lg p-4 mb-4">
+            <p class="text-gray-700 mb-2"><strong>Register Email for Alerts:</strong></p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input 
+                    type="email" 
+                    id="email-input" 
+                    placeholder="Enter email (e.g., user@example.com)" 
+                    class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <button 
+                    onclick="registerEmail()" 
+                    class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+                >
+                    Register Email
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="flex flex-col sm:flex-row gap-2">
+            <input 
+                type="text" 
+                id="input" 
+                placeholder="Type your message (e.g., 'check security status' or 'weather in London')" 
+                class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+            <button 
+                onclick="sendMessage()" 
+                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            >
+                Send
+            </button>
+            <button 
+                onclick="clearChat()" 
+                class="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition"
+            >
+                Clear Chat
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-4">
+        <div class="container mx-auto px-4 text-center">
+            <p>© 2025 Home Security Assistant. Created by Harsh.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Send message to Flask backend
+        async function sendMessage() {
+            const input = document.getElementById('input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Append user message
+            appendMessage(message, 'user');
+            input.value = '';
+
+            // Send to Flask /chat endpoint
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `message=${encodeURIComponent(message)}`
+                });
+                const data = await response.json();
+
+                // Append bot response
+                appendMessage(data.response, 'bot');
+
+                // Update security status if applicable
+                if (message.toLowerCase().includes('check security status')) {
+                    updateSecurityStatus(data.response);
+                }
+
+                // Check if email is registered via chat response
+                if (data.response.includes('Email registered successfully')) {
+                    hideEmailRegistration();
+                }
+            } catch (error) {
+                appendMessage('Error: Could not connect to server.', 'bot');
+                console.error('Fetch error:', error);
+            }
+
+            // Scroll to bottom
+            scrollToBottom();
+        }
+
+        // Register email
+        async function registerEmail() {
+            const emailInput = document.getElementById('email-input');
+            const email = emailInput.value.trim();
+            if (!email) {
+                appendMessage('Error: Please enter an email address.', 'bot');
+                return;
+            }
+
+            try {
+                const response = await fetch('/register_email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `email=${encodeURIComponent(email)}`
+                });
+                const data = await response.json();
+                appendMessage(data.response, 'bot');
+                if (data.response.includes('Email registered successfully')) {
+                    hideEmailRegistration();
+                }
+                emailInput.value = '';
+            } catch (error) {
+                appendMessage('Error: Could not register email.', 'bot');
+                console.error('Email registration error:', error);
+            }
+
+            // Scroll to bottom
+            scrollToBottom();
+        }
+
+        // Append message with timestamp
+        function appendMessage(text, sender) {
+            const chatbox = document.getElementById('chatbox');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = sender === 'user' ? 'user-message' : 'bot-message';
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            messageDiv.innerHTML = `<span>${text}</span><div class="text-xs mt-1 ${sender === 'user' ? 'text-right' : 'text-left'} text-gray-500">${timestamp}</div>`;
+            chatbox.appendChild(messageDiv);
+        }
+
+        // Update security status display
+        function updateSecurityStatus(response) {
+            const statusDiv = document.getElementById('security-status');
+            const statusText = document.getElementById('status-text');
+            const statusMatch = response.match(/System:.*Cameras: Online/);
+            if (statusMatch) {
+                statusText.innerHTML = statusMatch[0];
+                statusDiv.classList.remove('hidden');
+            }
+        }
+
+        // Hide email registration section after successful registration
+        function hideEmailRegistration() {
+            const emailSection = document.getElementById('email-registration');
+            emailSection.style.display = 'none';
+        }
+
+        // Clear chat
+        function clearChat() {
+            const chatbox = document.getElementById('chatbox');
+            chatbox.innerHTML = '';
+            const statusDiv = document.getElementById('security-status');
+            statusDiv.classList.add('hidden');
+        }
+
+        // Scroll to bottom of chatbox
+        function scrollToBottom() {
+            const chatbox = document.getElementById('chatbox');
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        // Send message on Enter key
+        document.getElementById('input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Register email on Enter key
+        document.getElementById('email-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') registerEmail();
+        });
+
+        // Toggle dark mode
+        let darkMode = false;
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark-mode', darkMode);
+            const toggleButton = document.getElementById('darkModeToggle');
+            toggleButton.textContent = darkMode ? 'Toggle Light Mode' : 'Toggle Dark Mode';
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'933a1efac9e7b0a0',t:'MTc0NTIwOTU2My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
